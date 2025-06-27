@@ -8,6 +8,8 @@ NCBI GEO accession numbers for the sequencing data associated with this study ar
 
 ## Issues and Help
 
+Remeber to upload and link comb_allgenes_cor_08092024_long.csv to Mendeley and post back here
+
 If you have questions, please send an email to jmcalabr@med.unc.edu
 
 ## Citation
