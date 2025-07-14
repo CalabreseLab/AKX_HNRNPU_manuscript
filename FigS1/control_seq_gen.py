@@ -1,6 +1,6 @@
-# Written on 2/27/23 to calculate the nucleotide content of a given genome
+# calculate the nucleotide content of a given genome
 # and to develop weighted randomized control sequences the same length as
-# given query sequences (originally for Rachel SAFB motifs)
+# given query sequences
 
 import numpy as np
 import os
@@ -11,7 +11,7 @@ G_count = 0
 C_count = 0
 other_count = 0
 
-with open("/work/users/s/h/shuang9/rip/GRCm38.primary_assembly.genome.fa", "r") as genomefile:
+with open("/rip/GRCm38.primary_assembly.genome.fa", "r") as genomefile:
     for line in genomefile:
         if line[0] != ">":
             for char in line:
@@ -47,12 +47,12 @@ def create_background_seq_file(controlfile, peakseqfile):
 
 
 # get all the fasta files under top1kfasta folder
-fas = os.listdir("/work/users/s/h/shuang9/rip/top1kfasta/")
+fas = os.listdir("/rip/top1kfasta/")
 fas = [entry for entry in fas if entry.endswith('.fa')]
 
 for fa in fas:
-    with open("/work/users/s/h/shuang9/rip/top1kfasta/%s" % fa, "r") as inpeakfile:
-        with open("/work/users/s/h/shuang9/rip/top1kcontrol/control_%s" % fa, "w") as outcontrolfile:
+    with open("/rip/top1kfasta/%s" % fa, "r") as inpeakfile:
+        with open("/rip/top1kcontrol/control_%s" % fa, "w") as outcontrolfile:
             create_background_seq_file(outcontrolfile, inpeakfile)
 
 
