@@ -8,14 +8,7 @@ library(dplyr)
 library(data.table)
 
 dt<-fread('comb_allgenes_cor_08092024_long.csv',header=T)
-# 6772545/19295=351
-# remove genes that contain NAs in the weight for better correlation calculation
-# genes_with_na <- dt[is.na(Weight), unique(gene)]
-# 5464 genes
-# Remove rows that belong to genes with NA in the weight column
-# dt_clean <- dt[!gene %in% genes_with_na]
-# 4854681 rows
-# unique genes 13831
+
 
 dt$Weight[is.na(dt$Weight)]<-0
 
@@ -78,11 +71,6 @@ for (n in 1:length(genelist)) {
 }
 
 # still NA exists, as there are genes with all NAs as the edge weights before
-# right now is all 0, and cor will procude NA with 0 sd
-# check NA num: 72, unique genes 19223
-sum(is.na(xak$xist_r)) # 72
-sum(!is.na(xak$airn_r)) # 19223
-sum(!is.na(xak$kcnq1ot1_r))
 # list all NA genes
 xak$gene[is.na(xak$xist_r)]
 

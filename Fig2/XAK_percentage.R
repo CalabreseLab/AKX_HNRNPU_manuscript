@@ -43,23 +43,23 @@ library(ggplot2)
 wilcox.test(x$r[which(x$community=='intra')],x$r[which(x$community=='inter')],alternative='greater')
 wilcox.test(a$r[which(a$community=='intra')],a$r[which(a$community=='inter')],alternative='greater')
 wilcox.test(k$r[which(k$community=='intra')],k$r[which(k$community=='inter')],alternative='greater')
-# all pvals: p-value < 2.2e-16
+
 
 # compare XAK intra
 wilcox.test(x$r[which(x$community=='intra')],a$r[which(a$community=='intra')],alternative='less')
-# 0.3573
+
 wilcox.test(x$r[which(x$community=='intra')],k$r[which(k$community=='intra')],alternative='less')
-# 0.03951
+
 wilcox.test(a$r[which(a$community=='intra')],k$r[which(k$community=='intra')],alternative='less')
-# 0.006577
+
 
 # compare XAK inter
 wilcox.test(x$r[which(x$community=='inter')],a$r[which(a$community=='inter')],alternative='less')
-# 5.359e-12
+
 wilcox.test(x$r[which(x$community=='inter')],k$r[which(k$community=='inter')],alternative='less')
-# < 2.2e-16
+
 wilcox.test(a$r[which(a$community=='inter')],k$r[which(k$community=='inter')],alternative='less')
-# < 2.2e-16
+
 
 
 # violin plot to show the shape better

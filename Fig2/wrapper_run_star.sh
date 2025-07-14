@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --output=star.out
 #SBATCH -p general
 #SBATCH -N 1
 #SBATCH -n 8

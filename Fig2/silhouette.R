@@ -35,10 +35,6 @@ silo<-function(gene1,dt,allcom) {
   # Create the igraph object directly from the data.table
   # as the column name is weight it will be recognized as edge weight in the graph
   graph1 <- graph_from_data_frame(d = dt1_pos, directed = FALSE)
-  # check edges E(graph1)
-  # check weights
-  # E(graph1)$weight
-  # check nodes V(graph1)
   
   # Compute the shortest path distance matrix
   dist1 <- distances(graph1,weights=E(graph1)$weight)

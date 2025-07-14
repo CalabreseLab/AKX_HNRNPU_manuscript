@@ -1,12 +1,10 @@
 # organize multicov results and calculate pearson correlation between proteins
 
-setwd("/work/users/s/h/shuang9/rip/multicov")
-
 library(tidyverse)
 library(ggplot2)
 
 header<-read.table('multicov_files_list_allgenes_08092024.txt',sep=' ')
-# 68 files in total
+
 
 header$V1<-gsub('_sorted.bam','',header$V1,fixed=T)
 
@@ -32,12 +30,10 @@ sampledata$FileName<-gsub('.fastq','',sampledata$FileName)
 # only keep the samples are in this analysis
 sampledata<-sampledata[which(sampledata$FileName %in% fastqorder),]
 uniq_sample<-unique(sampledata$Sample)
-# 28 protein in total
+
 
 
 lowtriangle<-function(df) {
-  
-  #df[df<0]<-0
   
   df[upper.tri(df,diag=T)]<-NA
   
@@ -54,19 +50,18 @@ lowtriangle<-function(df) {
 }
 
 
-mfiles<-dir('/work/users/s/h/shuang9/rip/multicov_out/',pattern='\\.out$')
-# 19295 files
+mfiles<-dir('/rip/multicov_out/',pattern='\\.out$')
+
 
 # add counter to check if all multicov_out file has 76 columns (6 properties + 70 seq files)
 mfile.err<-0
 
 for (n in 1:length(mfiles)) {
   if (n %% 100==0){print(n)}
-  #print(n)
   
   fn<-mfiles[n]
   
-  f.temp<-read.table(paste0('/work/users/s/h/shuang9/rip/multicov_out/',fn),sep='\t')
+  f.temp<-read.table(paste0('/rip/multicov_out/',fn),sep='\t')
   
   # drop V7 and V8 which corresponds to cbx7
   f.temp$V7<-NULL
@@ -107,7 +102,7 @@ for (n in 1:length(mfiles)) {
   
   fn.comb<-gsub('_multicov.out','_25bp_RBP_comb.csv',fn)
   
-  write.csv(f_comb,paste0('/work/users/s/h/shuang9/rip/multicov_RBPcomb/',fn.comb))
+  write.csv(f_comb,paste0('/rip/multicov_RBPcomb/',fn.comb))
   
   # subtract igg from all samples
   # if negative after subtraction, set to 0
@@ -127,11 +122,9 @@ for (n in 1:length(mfiles)) {
   # NA is produced for RBP that has all 0 counts for a gene for all its cor with others
   f_cor <- cor(f_data, method = "pearson", use = "pairwise.complete.obs")
   
-  # apply(f_data, 2, sd)
-  
   fn.cor<-gsub('_multicov.out','_25bp_RBP_cor.csv',fn)
   
-  write.csv(f_cor,paste0('/work/users/s/h/shuang9/rip/multicov_cor/',fn.cor))
+  write.csv(f_cor,paste0('/rip/multicov_cor/',fn.cor))
   
   ############ edges 
   
@@ -149,7 +142,7 @@ for (n in 1:length(mfiles)) {
   
   # Write the edges to a CSV file
   fn.edge<-gsub('_multicov.out','_edges.csv',fn)
-  write.csv(f_edges, file = paste0("/work/users/s/h/shuang9/rip/multicov_Gephi/",fn.edge), row.names = FALSE)
+  write.csv(f_edges, file = paste0("/rip/multicov_Gephi/",fn.edge), row.names = FALSE)
   
   ############### generate weighted adjacency matrix for leiden clustering
   
@@ -162,10 +155,9 @@ for (n in 1:length(mfiles)) {
   f_ld[is.na(f_ld)]<-0
   
   fn.ld<-gsub('_multicov.out','_ld_matrix.csv',fn)
-  write.csv(f_ld, paste0("/work/users/s/h/shuang9/rip/multicov_Gephi/",fn.ld),row.names = T)
+  write.csv(f_ld, paste0("/rip/multicov_Gephi/",fn.ld),row.names = T)
   
-  # perform leiden in python as there are warnings
-  # of loading the leiden package and warnings of performing leiden
+  # perform leiden in python as the R package does not work well
   
   
   ################# integrate all RBP profiles #########################
@@ -201,7 +193,7 @@ for (n in 1:length(mfiles)) {
   
 }
 
-write.csv(comb_allgenes,'/work/users/s/h/shuang9/rip/multicov/comb_allgenes_cor_08092024.csv',row.names = F)
+write.csv(comb_allgenes,'/rip/multicov/comb_allgenes_cor_08092024.csv',row.names = F)
 
 
 
@@ -212,7 +204,7 @@ rownames(combdf)<-RBPpair
 
 # keep columns without any NA values
 combdf_clean <- combdf[, sapply(combdf, function(col) !any(is.na(col)))]
-# 13831
+
 
 combdf_clean<-as.matrix(combdf_clean)
 # If you want to check the rows
@@ -221,13 +213,12 @@ sum(zero_var_rows) # 0
 # If you want to check the columns
 zero_var_cols <- apply(combdf_clean, 2, sd) == 0
 sum(zero_var_cols) # 0
-# Remove rows with zero variation
-# combdf <- combdf[!zero_var_rows, ]
+
 
 # Remove columns with zero variation
 combdf.fl <- combdf_clean
 rm (combdf_clean)
-# 13831
+
 
 
 # run leiden cluster with _ld_matrix.csv files in python
@@ -238,7 +229,7 @@ rm (combdf_clean)
 genelist<-colnames(combdf.fl)
 write.csv(genelist, "genelist13831.csv",row.names = F)
 
-ldfiles<-dir('/work/users/s/h/shuang9/rip/multicov_ld_nodes/')
+ldfiles<-dir('/rip/multicov_ld_nodes/')
 ldnames<-gsub('_nodes_ld.csv','',ldfiles)
 ldfiles<-ldfiles[ldnames %in% genelist]
 
@@ -253,7 +244,7 @@ for (n in 1:length(ldfiles)) {
   
   ldn <- ldfiles[n]
   
-  ld.temp <- fread(paste0('/work/users/s/h/shuang9/rip/multicov_ld_nodes/', ldn))
+  ld.temp <- fread(paste0('/rip/multicov_ld_nodes/', ldn))
   
   ldgene <- gsub('_nodes_ld.csv', '', ldn)
   
@@ -268,7 +259,7 @@ for (n in 1:length(ldfiles)) {
   }
 }
 
-write.csv(ld_allgenes,'/work/users/s/h/shuang9/rip/multicov/ldcommunity_allgenes_08092024.csv',row.names = F)
+write.csv(ld_allgenes,'/rip/multicov/ldcommunity_allgenes_08092024.csv',row.names = F)
 # 27 x 13831
 
 ######################

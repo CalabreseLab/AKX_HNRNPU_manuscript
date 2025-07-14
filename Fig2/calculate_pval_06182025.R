@@ -58,7 +58,7 @@ for (n in 2:ncol(ld_allgenes)) {
 
 write.csv(alldbl.rate,'alldbl_rate_08092024.csv',row.names = F)
 
-#install.packages('poibin')
+
 library(poibin)
 library(dplyr)
 

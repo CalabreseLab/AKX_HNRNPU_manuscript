@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --job-name=bam_sort
 #SBATCH -p general
 #SBATCH -N 1
 #SBATCH -n 8

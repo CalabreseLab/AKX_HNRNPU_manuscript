@@ -8,7 +8,7 @@
 allgenes<-read.csv('genelist13831.csv',header=T)
 allgenes<-allgenes$x
 
-allfiles<-dir('/work/users/s/h/shuang9/rip/multicov_ld_nodes/')
+allfiles<-dir('/rip/multicov_ld_nodes/')
 ldnames<-gsub('_nodes_ld.csv','',allfiles)
 allfiles<-allfiles[ldnames %in% allgenes]
 
@@ -98,12 +98,6 @@ write.csv(dbl_stats,'allgenes_double_intra_rare_ratio_06192025.csv',row.names = 
 
 
 #there are NAs in each stats -- no total intra edges
-sum(is.na(dbl_stats$rare_ratio)) # 1
-#sum(is.na(tpl_stats$uncommon_ratio)) # 1
-# 7230
-# Mal2_chr15_54571192_54602847_+_ENSMUSG00000024479.3_ENSMUSG00000024479.3.unspliced
-# this one has each node into one community, 27 communities in total so no intra edges
-
 # remove the NA row to be excluded from the next analysis
 dbl_stats<-dbl_stats[!is.na(dbl_stats$rare_ratio),]
 
@@ -113,7 +107,6 @@ aidx<-which(dbl_stats$genes=='Airn_chr17_12741398_12830151_+_ENSMUSG00000078247.
 kidx<-which(dbl_stats$genes=='Kcnq1ot1_chr7_143203458_143296549_-_ENSMUSG00000101609.2_ENSMUST00000185789.2.monoexonic.unspliced')
 
 dbl_xak<-dbl_stats[c(xidx,aidx,kidx),]
-#tpl_xak<-tpl_stats[c(xidx,aidx,kidx),]
 
 dbl_xak$genename<-c('Xist','Airn','Kcnq1ot1')
 
@@ -149,8 +142,6 @@ p<-ggplot() +
   coord_cartesian(xlim=c(0,0.8))+
   scale_x_continuous(breaks=seq(from=0, to=0.8, by=0.2),labels = scales::number_format(accuracy = 0.1))+
   theme(panel.background=element_rect(fill='white'),
-        #plot.margin = margin(2, 2, 2, 2, "pt"),
-        # panel.grid.major=element_line(color='grey',linewidth =0.3),
         panel.grid.major=element_blank(),
         axis.line.x = element_line(color="black", linewidth = 0.5),
         axis.line.y = element_line(color="black", linewidth = 0.5),
@@ -162,8 +153,8 @@ p<-ggplot() +
   geom_vline(data = dbl_xak, aes(xintercept = rare_ratio), color = "#1b9e77", linetype = "solid",linewidth=1)+
   geom_text_repel(data = dbl_xak, aes(x = rare_ratio, y = c(1500,1800,2200), label = rare_ratio_label), 
                   size = 8, nudge_x = 0, direction = "y", hjust = -0.05, vjust = -0.3,
-                  segment.color = "darkred",   # Color of the connecting line
-                  segment.size = 0.5,       # Thickness of the connecting line
+                  segment.color = "darkred",   
+                  segment.size = 0.5,       
                   segment.linetype = "solid",
                   max.overlaps=20,
                   force=3)
@@ -181,8 +172,6 @@ p<-ggplot() +
   coord_cartesian(xlim=c(0,80),ylim=c(0,3000))+
   scale_x_continuous(breaks=seq(from=0, to=80, by=20))+
   theme(panel.background=element_rect(fill='white'),
-        #plot.margin = margin(2, 2, 2, 2, "pt"),
-        # panel.grid.major=element_line(color='grey',linewidth =0.3),
         panel.grid.major=element_blank(),
         axis.line.x = element_line(color="black", linewidth = 0.5),
         axis.line.y = element_line(color="black", linewidth = 0.5),
@@ -194,8 +183,8 @@ p<-ggplot() +
   geom_vline(data = dbl_xak, aes(xintercept = rare), color = "#1b9e77", linetype = "solid",linewidth=1)+
   geom_text_repel(data = dbl_xak, aes(x = rare, y = c(1800,2300,2800), label = rare_label), 
                   size = 8, nudge_x = 0, direction = "y", hjust = -0.05, vjust = -0.3,
-                  segment.color = "darkred",   # Color of the connecting line
-                  segment.size = 0.5,       # Thickness of the connecting line
+                  segment.color = "darkred",   
+                  segment.size = 0.5,       
                   segment.linetype = "solid",
                   max.overlaps=20,
                   force=3)

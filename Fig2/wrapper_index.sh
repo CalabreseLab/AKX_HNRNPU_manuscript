@@ -1,7 +1,4 @@
 #!/bin/bash
-#SBATCH --job-name=bam_index
-#SBATCH --output=bam_index_%j.out
-#SBATCH --error=bam_index_%j.err
 #SBATCH -p general
 #SBATCH -N 1
 #SBATCH -n 8

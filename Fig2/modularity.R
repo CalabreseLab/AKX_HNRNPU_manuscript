@@ -15,7 +15,7 @@ allcom<-fread('ldcommunity_allgenes_08092024.csv',header=T)
 # 5464 genes that contains NA in the Weights col
 
 dt<-fread('comb_allgenes_cor_08092024_long.csv',header=T)
-# 6772545/19295=351
+
 
 modu<-function(gene1,dt,allcom) {
   
@@ -33,10 +33,7 @@ modu<-function(gene1,dt,allcom) {
   # Create the igraph object directly from the data.table
   # as the column name is weight it will be recognized as edge weight in the graph
   graph1 <- graph_from_data_frame(d = dt1_pos, directed = FALSE)
-  # check edges E(graph1)
-  # check weights
-  # E(graph1)$weight
-  # check nodes V(graph1)
+
   
   # get community assignment
   com1<-allcom[[gene1]]
@@ -54,9 +51,9 @@ modu<-function(gene1,dt,allcom) {
 }
 
 
-xist_mod<-modu(xist,dt,allcom) # 0.1746962
-airn_mod<-modu(airn,dt,allcom) # 0.06132606
-ot1_mod<-modu(ot1,dt,allcom) # -0.02468401
+xist_mod<-modu(xist,dt,allcom) 
+airn_mod<-modu(airn,dt,allcom) 
+ot1_mod<-modu(ot1,dt,allcom) 
 
 allgene<-colnames(allcom)[-1]
 allgene_mod<-vector(mode='numeric',length=length(allgene))
@@ -76,11 +73,11 @@ colnames(allgene_mod)<-'modularity'
 allgene_mod$gene<-allgene
 
 xquant<-round(sum(xist_mod>allgene_mod$modularity,na.rm=T)/sum(!is.na(allgene_mod$modularity)),digits=4)*100
-# 98.89
+
 aquant<-round(sum(airn_mod>allgene_mod$modularity,na.rm=T)/sum(!is.na(allgene_mod$modularity)),digits=4)*100
-# 82.96
+
 kquant<-round(sum(ot1_mod>allgene_mod$modularity,na.rm=T)/sum(!is.na(allgene_mod$modularity)),digits=4)*100
-# 11.19
+
 
 xak<-data.frame(gene=c(paste0('Xist(',xquant,'%)'),
                        paste0('Airn(',aquant,'%)'),
@@ -110,8 +107,8 @@ p<-ggplot() +
   geom_vline(data = xak, aes(xintercept = modularity), color = "#1b9e77", linetype = "solid",linewidth=0.5)+
   geom_text_repel(data = xak, aes(x = modularity, y = c(1000,1250,1500), label = gene), 
                   size = 8, nudge_x = 0.01, direction = "y", hjust = -0.1, vjust = -0.5,
-                  segment.color = "darkgray",   # Color of the connecting line
-                  segment.size = 0.5,       # Thickness of the connecting line
+                  segment.color = "darkgray",  
+                  segment.size = 0.5,       
                   segment.linetype = "solid")
 
 

@@ -1,7 +1,5 @@
 # generate bedfile for chunks and save score as negative log of the pval
 
-# setwd set working directory properly
-setwd("/work/users/s/h/shuang9/rip")
 library(Biostrings) # needed to be loaded first, before rtracklayer
 library(rtracklayer)
 library(data.table) # better data handling
