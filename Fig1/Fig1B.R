@@ -7,14 +7,9 @@ library(circlize)
 
 ########### ranking heatmap #################
 df<-read.csv('TSC-exp_ESC-exp_Chrom-assoc_igg_rpm_4_10_2024.csv',header=T)
-# 114783 in total
-# filter filter for length >=500, median exp >0.0625, chrom-fraction >0.75, 
-df<-df[which(df$length.x >= 500 & df$Median_tpm >0.0625 & df$chrom_enrichment >0.75),]
-# 19295
 
-# Retain length.x,Median_tpm,chrom_average,cyto_average,chrom_enrichment
-# Retain all rips except bmi1,ezh2,suz12,epop,mtf2,jarid2
-# retain “X_over_igg” column (and rename X_less_igg)
+df<-df[which(df$length.x >= 500 & df$Median_tpm >0.0625 & df$chrom_enrichment >0.75),]
+
 newdf<-df[,c(1,2,22,34,35,36,seq(from=38,to=104,by=2))]
 newdf<-newdf[,c(1:7,9,12:16,19:21,23:34,36:40)]
 

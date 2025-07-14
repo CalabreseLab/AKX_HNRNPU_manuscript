@@ -9,8 +9,6 @@ comb<-read.csv('allgenes_XAKRIPr_XAKnetworkr_common_sil_modu_genetype_06302025.c
 
 comb<-comb[,c(1:4,14)]
 
-# edit genetype
-# comb$genetype[which(comb$genetype!='protein_coding' & comb$genetype!='lncRNA')]<-'others'
 
 # get top1000 xak, exclude XAK from the list
 top1000_xist <- comb[order(comb$Xist_RIP_r,decreasing = TRUE)[2:1001],]
