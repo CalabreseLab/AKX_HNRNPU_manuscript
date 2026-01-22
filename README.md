@@ -17,5 +17,5 @@ If you have questions, please send an email to jmcalabr@med.unc.edu
 If you use this work, please cite:
 
 ```
-Modular protein-RNA associations reveal a requirement for HNRNPU in long-range Polycomb recruitment by the lncRNAs *Airn*, *Kcnq1ot1*, and *Xist*
+Formaldehyde-based RIP reveals correlated protein-RNA associations and a requirement for HNRNPU in long-range Polycomb recruitment by lncRNAs *Airn*, *Kcnq1ot1*, and *Xist*
 ```
