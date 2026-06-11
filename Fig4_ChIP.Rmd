@@ -1,0 +1,570 @@
+---
+title: "Figure 4 ChIP plots"
+author: "Mickey Murvin"
+date: "2025-04-22"
+output: html_document
+---
+
+## R Markdown
+#code for FIgure 4, RPM normalized tiling density plots and box plots of B6-CAST for each replicate
+##edited 05_15_25 to only plot bins of B6-CAST where the B6 values are greater than the highest CAST value
+## ony want this for OT1 though
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/Users/murvinmm/Documents/Murvin_2026/")
+setwd("/Users/murvinmm/Documents/Murvin_2026/")
+# Load libraries
+library(dplyr)
+library(zoo)
+library(ggplot2)
+library(ggpubr)
+library(tidyr)
+library(ragg)
+
+# 1) read_sample(): drop the 'bin' column and explicitly return
+read_sample <- function(path, prefix, chr_filter) {
+  df <- read.delim(path, header = FALSE)
+  colnames(df) <- c("bin", "chr", "start", "end",
+                    paste0(prefix, ".b6.count"),
+                    paste0(prefix, ".cast.count"))
+  df <- subset(df, chr == chr_filter)
+  df <- df[, !(names(df) %in% "bin")]
+  return(df)
+}
+
+# 2) read_snps(): filter out chr≠chr_filter AND snp.count < 25, drop 'bin', zero‐fill NAs
+read_snps <- function(path, chr_filter) {
+  read.delim(path, header = FALSE) %>%
+    setNames(c("chr", "start", "end", "bin", "snp.count")) %>%
+    filter(chr == chr_filter, snp.count >= 25) %>%
+    select(-bin) %>%
+    replace(is.na(.), 0)
+}
+
+# 3) moving_average(): 9‐bin, center‐aligned rolling mean with NA at the edges
+moving_average <- function(x, n = 9) {
+  rollmean(x, n, fill = NA, align = "center")
+}
+
+# 4) process_and_plot(): main function
+process_and_plot <- function(
+  s1, s2, s3, s4,
+  snp_file, chr_filter,
+  reads1, reads2, reads3, reads4,
+  output_prefix,
+  x_limits, y_limits, plot_title, rect_coords,
+  lab1, lab2, lab3, lab4,
+  norm_label,
+  tile_colors = c("#172869", "#EA7580", "grey20","grey55")
+) {
+  # — Read & merge —
+  samp1 <- read_sample(s1, "sample1", chr_filter)
+  samp2 <- read_sample(s2, "sample2", chr_filter)
+  samp3 <- read_sample(s3, "sample3", chr_filter)
+  samp4 <- read_sample(s4, "sample4", chr_filter)
+  snps  <- read_snps(snp_file, chr_filter)
+
+  df <- merge(samp1, samp2, by = c("chr", "start", "end"))
+  df <- merge(df, samp3,   by = c("chr", "start", "end"))
+  df <- merge(df, samp4,   by = c("chr", "start", "end"))
+  df <- merge(df, snps,    by = c("chr", "start", "end"))
+  df[is.na(df)] <- 0
+
+  df <- df %>%
+    mutate(
+      sample1.b6.rpm.norm   = sample1.b6.count   / reads1   / snp.count,
+      sample1.cast.rpm.norm = sample1.cast.count / reads1   / snp.count,
+      sample2.b6.rpm.norm   = sample2.b6.count   / reads2   / snp.count,
+      sample2.cast.rpm.norm = sample2.cast.count / reads2   / snp.count,
+      sample3.b6.rpm.norm   = sample3.b6.count   / reads3   / snp.count,
+      sample3.cast.rpm.norm = sample3.cast.count / reads3   / snp.count,
+      sample4.b6.rpm.norm   = sample4.b6.count   / reads4   / snp.count,
+      sample4.cast.rpm.norm = sample4.cast.count / reads4   / snp.count
+    ) %>%
+    mutate(across(
+      ends_with("rpm.norm"),
+      ~ moving_average(., 9),
+      .names = "{.col}.smoothed"
+    )) %>%
+    mutate(across(
+      ends_with(".smoothed"),
+      ~ ifelse(is.infinite(.), 0, .)
+    )) %>%
+    mutate(
+      sample1.B6_minus_CAST.smoothed = sample1.b6.rpm.norm.smoothed   - sample1.cast.rpm.norm.smoothed,
+      sample2.B6_minus_CAST.smoothed = sample2.b6.rpm.norm.smoothed   - sample2.cast.rpm.norm.smoothed,
+      sample3.B6_minus_CAST.smoothed = sample3.b6.rpm.norm.smoothed   - sample3.cast.rpm.norm.smoothed,
+      sample4.B6_minus_CAST.smoothed = sample4.b6.rpm.norm.smoothed   - sample4.cast.rpm.norm.smoothed
+    ) %>%
+    mutate(
+      Avg_B6_Dox.smoothed     = (sample1.b6.rpm.norm.smoothed   + sample3.b6.rpm.norm.smoothed)   / 2,
+      Avg_B6_NoDox.smoothed   = (sample2.b6.rpm.norm.smoothed   + sample4.b6.rpm.norm.smoothed)   / 2,
+      Avg_CAST_Dox.smoothed   = (sample1.cast.rpm.norm.smoothed + sample3.cast.rpm.norm.smoothed) / 2,
+      Avg_CAST_NoDox.smoothed = (sample2.cast.rpm.norm.smoothed + sample4.cast.rpm.norm.smoothed) / 2
+    )
+
+  write.table(
+    df,
+    paste0(output_prefix, "_processed.txt"),
+    sep = "\t", row.names = FALSE, quote = FALSE
+  )
+
+  # — Tiling plot —
+  p_tiles <- ggplot(df, aes(x = start / 1e6)) +
+    annotate("rect",
+      xmin = rect_coords[1], xmax = rect_coords[2],
+      ymin = -Inf,            ymax = Inf,
+      fill = "cyan", alpha = 0.6
+    ) +
+    geom_point(aes(y = Avg_B6_NoDox.smoothed, color = lab2),
+               size = 0.1, alpha = 0.6) +
+    geom_point(aes(y = Avg_B6_Dox.smoothed,   color = lab1),
+               size = 0.1, alpha = 0.3) +
+    geom_point(aes(y = Avg_CAST_NoDox.smoothed, color = lab4),
+               size = 0.1, alpha = 0.6) +
+    geom_point(aes(y = Avg_CAST_Dox.smoothed,   color = lab3),
+               size = 0.1, alpha = 0.3) +
+    scale_color_manual(
+      values = setNames(tile_colors, c(lab2, lab1, lab4, lab3))
+    ) +
+    labs(
+      x = paste(chr_filter, "position (Mb)"),
+      y = paste(plot_title, "\n", norm_label),
+      color = NULL
+    ) +    
+    scale_x_continuous(breaks = seq(x_limits[1], x_limits[2], (x_limits[2] - x_limits[1]) / 4), labels = function(x) {
+    ifelse(x %% 1 == 0, as.character(x), sprintf("%.1f", x))
+  }) +
+    scale_y_continuous(
+      breaks = seq(0, y_limits[2], y_limits[2]),
+      labels = function(x) {
+    ifelse(x %% 1 == 0, as.character(x), sprintf("%.1f", x))
+  }
+    )+
+    coord_cartesian(xlim = x_limits, ylim = c(0, y_limits[2])) +
+    theme_classic() +
+    theme(
+    axis.title.x = element_text(size = 12, color = "black"),
+    axis.title.y = element_text(size = 12, color = "black"),
+    axis.text.y = element_text(size = 12, color = "black"),
+    axis.text.x = element_text(size = 12, color = "black"),
+    axis.line  = element_line(color = "black"),
+    axis.ticks = element_line(color = "black"),
+      legend.position = "none",
+      text           = element_text(family = "Arial")
+    )
+
+
+# small file for paper
+ragg::agg_png(paste0(output_prefix, "_small_tiling.png"),
+              width = 3, height = 1.7, units = "in", res = 300, scaling = 1)
+print(p_tiles)
+dev.off()
+
+# large file for ppts
+ragg::agg_png(paste0(output_prefix, "_large_tiling.png"),
+              width = 30, height = 17, units = "in", res = 300, scaling = 9)
+print(p_tiles)
+dev.off()
+
+  return(df)
+}
+
+# 5) generate_interval_boxplot(): updated to filter B6 > max CAST
+generate_interval_boxplot <- function(
+  data, interval_start, interval_end, chr,
+  output_prefix, sample_labels, sample_colors,
+  plot_title, norm_label, comparisons
+) {
+  # subset to interval
+  df_int_raw <- data %>%
+    filter(start >= interval_start,
+           start <= interval_end)
+
+  
+  # pivot on B6−CAST differences
+  df_int <- df_int_raw %>%
+    pivot_longer(
+      cols      = ends_with("B6_minus_CAST.smoothed"),
+      names_to  = "sample",
+      values_to = "value"
+    ) %>%
+    mutate(sample = factor(
+      sample,
+      levels = names(sample_labels),
+      labels = sample_labels
+    ))
+
+  # recompute whiskers & y-limits to match data scales
+  whiskers     <- df_int %>% group_by(sample) %>% summarise(uw = boxplot.stats(value)$stats[5])
+  sig_position <- max(whiskers$uw, na.rm = TRUE)
+  # your if/else ladder to set y_limit based on sig_position
+  if      ((sig_position*1.05) <= 0.04) y_limit <- 0.04
+  else if ((sig_position*1.05) <= 0.05) y_limit <- 0.05
+  else if ((sig_position*1.05) <= 0.06) y_limit <- 0.06
+  else if ((sig_position*1.05) <= 0.1)  y_limit <- 0.1
+  else if ((sig_position*1.05) <= 0.15) y_limit <- 0.15
+  else if ((sig_position*1.05) <= 0.2)  y_limit <- 0.2
+  else if ((sig_position*1.05) <= 0.25) y_limit <- 0.25
+  else if ((sig_position*1.05) <= 0.3)  y_limit <- 0.3
+  else if ((sig_position*1.05) <= 0.35) y_limit <- 0.35
+  else                                 y_limit <- 0.4
+  y_breaks <- seq(0, y_limit, length.out = 2)
+
+  # build boxplot
+  p_box <- ggplot(df_int, aes(x = sample, y = value, fill = sample)) +
+    geom_boxplot(width = 0.49, outlier.shape = NA, alpha = 0.7) +
+    scale_fill_manual(values = sample_colors) +
+    scale_y_continuous(
+      limits = c(0, y_limit),
+      breaks = y_breaks,
+      expand = expansion(mult = c(0, 0.05)),
+      labels = function(x) ifelse(x==0, "0", format(x, trim = TRUE, nsmall = 1))
+    ) +
+    labs(
+      x     = NULL,
+      y     = norm_label,
+    ) +
+    stat_compare_means(
+      comparisons = comparisons,
+      method      = "t.test",
+      method.args = list(alternative = "greater"),
+      label       = "p.signif",
+      label.y     = sig_position * 0.95,
+      tip.length  = 0,
+      bracket.size= 0
+    ) +
+    theme_classic() +
+    theme(
+      axis.text.x     = element_blank(),
+      axis.text.y     = element_text(size=12, color="black"),
+      axis.title.y    = element_text(angle=90, size=12, color="black",
+                                     margin=margin(r=-5,b=10), hjust=0),
+      axis.line       = element_line(color="black"),
+      axis.ticks      = element_line(color="black"),
+      legend.position = "none",
+      text            = element_text(family="Arial")
+    )
+
+  # small for papers
+ragg::agg_png(paste0(output_prefix,"_small_interval_boxplot_05_17_25.png"),
+              width = 1.4, height = 1.3, units = "in", res = 300)
+print(p_box)
+dev.off()
+
+# large for ppts
+ragg::agg_png(paste0(output_prefix,"_large_interval_boxplot_05_17_25.png"),
+              width = 14, height = 13, units = "in", res = 300, scaling = 9)
+print(p_box)
+dev.off()
+  return(p_box)
+}
+
+
+```
+
+
+## H2AK119ub, HK g3+4 & g1  
+```{r plot_H2AK119ub_HK, message=FALSE, warning=FALSE}
+
+
+file_pairs_K119_HK <- list(
+  list(
+    "F18_tsc_HK_g3_4_Dox_H2AK119ub_chip_S12_R1_001_mm10-allelic_10kb-bins.txt",
+    "F18_tsc_HK_g3_4_nodox_H2AK119ub_chip_S11_R1_001_mm10-allelic_10kb-bins.txt",
+    18.028595, 20.361483, "HK g3+4 Dox", "HK g3+4 No Dox",
+    "F14_tsc_HK_g1_Dox_H2AK119ub_chip_S5_R1_001_mm10-allelic_10kb-bins.txt",
+    "F14_tsc_HK_g1_nodox_H2AK119ub_chip_S6_R1_001_mm10-allelic_10kb-bins.txt",
+    13.146822, 12.963742, "HK g1 Dox", "HK g1 No Dox"
+  )
+)
+# have to make XIst bigger than it is note, shoudl be 103.46 to 103.48
+chromosomes_K119 <- list(
+  list("chrX",  c(0,150),   c(0,0.15), "H2AK119ub", c(103,104), c(0,150)),
+  list("chr17", c(3,24),    c(0,0.15), "H2AK119ub", c(12.74,12.86),    c(3,24)),
+  list("chr7",  c(142,144.4),c(0,0.1),  "H2AK119ub", c(143.213111,143.296547), c(142,144.4))
+)
+
+snp_file_K119 <- "sanger_mm10_cast_all-chr-10kb-bins.bed"
+
+for (chr in chromosomes_K119) {
+  for (pair in file_pairs_K119_HK) {
+    prefix <- paste0(gsub(".txt","",pair[[1]]), "_", chr[[1]], "_rpm_norm_avg")
+
+    fd <- process_and_plot(
+      s1            = pair[[1]],
+      s2            = pair[[2]],
+      s3            = pair[[7]],
+      s4            = pair[[8]],
+      snp_file      = snp_file_K119,
+      chr_filter    = chr[[1]],
+      reads1        = pair[[3]],
+      reads2        = pair[[4]],
+      reads3        = pair[[9]],
+      reads4        = pair[[10]],
+      output_prefix = prefix,
+      x_limits      = chr[[2]],
+      y_limits      = chr[[3]],
+      plot_title    = chr[[4]],
+      rect_coords   = chr[[5]],
+      lab1          = pair[[5]],
+      lab2          = pair[[6]],
+      lab3          = pair[[11]],
+      lab4          = pair[[12]],
+      norm_label    = "B6 RPM norm",
+      tile_colors   = c("#172869","#EA7580","grey20","grey55")
+    )
+
+
+    labs <- c(pair[[6]], pair[[5]], pair[[12]], pair[[11]])
+    names(labs) <- c(
+      "sample2.B6_minus_CAST.smoothed",
+      "sample1.B6_minus_CAST.smoothed",
+      "sample4.B6_minus_CAST.smoothed",
+      "sample3.B6_minus_CAST.smoothed"
+    )
+    cols <- c("#172869","#EA7580","skyblue","pink")
+    names(cols) <- labs
+    comps <- list(c(pair[[6]], pair[[5]]), c(pair[[12]], pair[[11]]))
+
+    generate_interval_boxplot(
+      fd,
+      interval_start = chr[[6]][1] * 1e6,
+      interval_end   = chr[[6]][2] * 1e6,
+      chr[[1]],
+     prefix,
+      sample_labels  = labs,
+      sample_colors  = cols,
+      plot_title     = chr[[4]],
+      norm_label     = "RPM norm\n(B6 – CAST)",
+      comparisons    = comps
+    )
+  }
+}
+```
+
+
+## H2AK119ub, HNRNPU  
+```{r plot_H2AK119ub_HNRNPU, message=FALSE, warning=FALSE}
+
+file_pairs_K119_U <- list(
+  list(
+    "F18_tsc_HU_g5_Dox_H2AK119ub_chip_S10_R1_001_mm10-allelic_10kb-bins.txt",
+    "F18_tsc_HU_g5_nodox_H2AK119ub_chip_S9_R1_001_mm10-allelic_10kb-bins.txt",
+    16.866125, 17.553885, "HU g5 Dox", "HU g5 No Dox",
+    "F14_tsc_HU_g1_3_Dox_H2AK119ub_chip_S7_R1_001_mm10-allelic_10kb-bins.txt",
+    "F14_tsc_HU_g1_3_nodox_H2AK119ub_chip_S8_R1_001_mm10-allelic_10kb-bins.txt",
+    12.367208, 13.798048, "HU g1+3 Dox", "HU g1+3 No Dox"
+  )
+)
+
+# reuse `chromosomes_K119` and `snp_file_K119` from above
+
+for (chr in chromosomes_K119) {
+  for (pair in file_pairs_K119_U) {
+    prefix <- paste0(gsub(".txt","",pair[[1]]), "_", chr[[1]], "_rpm_norm_avg")
+
+    fd <- process_and_plot(
+      s1            = pair[[1]],
+      s2            = pair[[2]],
+      s3            = pair[[7]],
+      s4            = pair[[8]],
+      snp_file      = snp_file_K119,
+      chr_filter    = chr[[1]],
+      reads1        = pair[[3]],
+      reads2        = pair[[4]],
+      reads3        = pair[[9]],
+      reads4        = pair[[10]],
+      output_prefix = prefix,
+      x_limits      = chr[[2]],
+      y_limits      = chr[[3]],
+      plot_title    = chr[[4]],
+      rect_coords   = chr[[5]],
+      lab1          = pair[[5]],
+      lab2          = pair[[6]],
+      lab3          = pair[[11]],
+      lab4          = pair[[12]],
+      norm_label    = "B6 RPM norm",
+      # HNRNPU gets the cyan–orange–aqua–burlywood palette:
+      tile_colors   = c("darkcyan","orange1","grey20","grey55")
+    )
+
+    labs <- c(pair[[6]], pair[[5]], pair[[12]], pair[[11]])
+    names(labs) <- c(
+      "sample2.B6_minus_CAST.smoothed",
+      "sample1.B6_minus_CAST.smoothed",
+      "sample4.B6_minus_CAST.smoothed",
+      "sample3.B6_minus_CAST.smoothed"
+    )
+    cols <- c("#00aab3","#f5a75f","#aac6a1","#efcd99")
+    names(cols) <- labs
+    comps <- list(c(pair[[6]], pair[[5]]), c(pair[[12]], pair[[11]]))
+
+    generate_interval_boxplot(
+      data           = fd,
+      interval_start = chr[[6]][1] * 1e6,
+      interval_end   = chr[[6]][2] * 1e6,
+      chr            = chr[[1]],
+      output_prefix  = prefix,
+      sample_labels  = labs,
+      sample_colors  = cols,
+      plot_title     = chr[[4]],
+      norm_label     = "RPM norm\n(B6 – CAST)",
+      comparisons    = comps
+    )
+  }
+}
+```
+
+## H3K27me3, HK g3+4 & g1  
+```{r plot_H3K27me3_HK, message=FALSE, warning=FALSE}
+
+
+file_pairs_K27_HK <- list(
+  list(
+    "F11_tsc_HK_g3_4_Dox_H3K27me3_chip_S21_R1_001_mm10-allelic_10kb-bins.txt",
+    "F11_tsc_HK_g3_4_nodox_H3K27me3_chip_S22_R1_001_mm10-allelic_10kb-bins.txt",
+    13.90507, 12.645342, "HK g3+4 Dox", "HK g3+4 No Dox",
+    "F14_tsc_HK_g1_Dox_H3K27me3_chip_S1_R1_001_mm10-allelic_10kb-bins.txt",
+    "F14_tsc_HK_g1_nodox_H3K27me3_chip_S2_R1_001_mm10-allelic_10kb-bins.txt",
+    13.852412, 13.345107, "HK g1 Dox", "HK g1 No Dox"
+  )
+)
+
+chromosomes_K27 <- list(
+  list("chrX",  c(0,150),   c(0,0.3), "H3K27me3", c(103,104), c(0,150)),
+  list("chr17", c(3,24),    c(0,0.3), "H3K27me3", c(12.74,12.86),    c(3,24)),
+  list("chr7",  c(142,144.4),c(0,0.2),"H3K27me3", c(143.213111,143.296547), c(142,144.4))
+)
+
+snp_file <- "sanger_mm10_cast_all-chr-10kb-bins.bed"
+
+for (chr in chromosomes_K27) {
+  for (pair in file_pairs_K27_HK) {
+    prefix <- paste0(gsub(".txt","",pair[[1]]), "_", chr[[1]], "_rpm_norm_avg")
+
+    fd <- process_and_plot(
+      s1            = pair[[1]],
+      s2            = pair[[2]],
+      s3            = pair[[7]],
+      s4            = pair[[8]],
+      snp_file      = snp_file,
+      chr_filter    = chr[[1]],
+      reads1        = pair[[3]],
+      reads2        = pair[[4]],
+      reads3        = pair[[9]],
+      reads4        = pair[[10]],
+      output_prefix = prefix,
+      x_limits      = chr[[2]],
+      y_limits      = chr[[3]],
+      plot_title    = chr[[4]],
+      rect_coords   = chr[[5]],
+      lab1          = pair[[5]],
+      lab2          = pair[[6]],
+      lab3          = pair[[11]],
+      lab4          = pair[[12]],
+      norm_label    = "B6 RPM norm",
+      # HK uses default navy/pink
+      tile_colors   = c("#172869","#EA7580","grey20","grey55")
+    )
+
+    labs <- c(pair[[6]], pair[[5]], pair[[12]], pair[[11]])
+    names(labs) <- c(
+      "sample2.B6_minus_CAST.smoothed",
+      "sample1.B6_minus_CAST.smoothed",
+      "sample4.B6_minus_CAST.smoothed",
+      "sample3.B6_minus_CAST.smoothed"
+    )
+    cols <- c("#172869","#EA7580","skyblue","pink")
+    names(cols) <- labs
+    comps <- list(c(pair[[6]], pair[[5]]), c(pair[[12]], pair[[11]]))
+
+    generate_interval_boxplot(
+      data           = fd,
+      interval_start = chr[[6]][1]*1e6,
+      interval_end   = chr[[6]][2]*1e6,
+      chr            = chr[[1]],
+      output_prefix  = prefix,
+      sample_labels  = labs,
+      sample_colors  = cols,
+      plot_title     = chr[[4]],
+      norm_label     = "RPM norm\n(B6 – CAST)",
+      comparisons    = comps
+    )
+  }
+}
+```
+
+## H3K27me3, HNRNPU  
+```{r plot_H3K27me3_HNRNPU, message=FALSE, warning=FALSE}
+
+
+file_pairs_K27_U <- list(
+  list(
+    "F11_tsc_HU_g5_Dox_H3K27me3_chip_S17_R1_001_mm10-allelic_10kb-bins.txt",
+    "F11_tsc_HU_g5_nodox_H3K27me3_chip_S18_R1_001_mm10-allelic_10kb-bins.txt",
+    11.667249, 14.555974, "HU g5 Dox", "HU g5 No Dox",
+    "F14_tsc_HU_g1_3_Dox_H3K27me3_chip_S3_R1_001_mm10-allelic_10kb-bins.txt",
+    "F14_tsc_HU_g1_3_nodox_H3K27me3_chip_S4_R1_001_mm10-allelic_10kb-bins.txt",
+    15.328594, 13.784046, "HU g1+3 Dox", "HU g1+3 No Dox"
+  )
+)
+
+# reuse chromosomes_K27 and snp_file from above
+
+for (chr in chromosomes_K27) {
+  for (pair in file_pairs_K27_U) {
+    prefix <- paste0(gsub(".txt","",pair[[1]]), "_", chr[[1]], "_rpm_norm_avg")
+
+    fd <- process_and_plot(
+      s1            = pair[[1]],
+      s2            = pair[[2]],
+      s3            = pair[[7]],
+      s4            = pair[[8]],
+      snp_file      = snp_file,
+      chr_filter    = chr[[1]],
+      reads1        = pair[[3]],
+      reads2        = pair[[4]],
+      reads3        = pair[[9]],
+      reads4        = pair[[10]],
+      output_prefix = prefix,
+      x_limits      = chr[[2]],
+      y_limits      = chr[[3]],
+      plot_title    = chr[[4]],
+      rect_coords   = chr[[5]],
+      lab1          = pair[[5]],
+      lab2          = pair[[6]],
+      lab3          = pair[[11]],
+      lab4          = pair[[12]],
+      norm_label    = "B6 RPM norm",
+      # PU uses cyan–orange–aqua–burlywood
+      tile_colors   = c("darkcyan","orange1","grey20","grey55")
+    )
+
+    labs <- c(pair[[6]], pair[[5]], pair[[12]], pair[[11]])
+    names(labs) <- c(
+      "sample2.B6_minus_CAST.smoothed",
+      "sample1.B6_minus_CAST.smoothed",
+      "sample4.B6_minus_CAST.smoothed",
+      "sample3.B6_minus_CAST.smoothed"
+    )
+    cols <- c("#00aab3","#f5a75f","#aac6a1","#efcd99")
+    names(cols) <- labs
+    comps <- list(c(pair[[6]], pair[[5]]), c(pair[[12]], pair[[11]]))
+
+    generate_interval_boxplot(
+      data           = fd,
+      interval_start = chr[[6]][1]*1e6,
+      interval_end   = chr[[6]][2]*1e6,
+      chr            = chr[[1]],
+      output_prefix  = prefix,
+      sample_labels  = labs,
+      sample_colors  = cols,
+      plot_title     = chr[[4]],
+      norm_label     = "RPM norm\n(B6 – CAST)",
+      comparisons    = comps
+    )
+  }
+}
+```
+
+
