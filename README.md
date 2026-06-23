@@ -17,6 +17,6 @@ If you have questions, please send an email to jmcalabr@med.unc.edu
 If you use this work, please cite:
 
 ```
-[Correlated protein-RNA associations and a requirement for HNRNPU in the long-range recruitment of Polycomb Repressive Complexes by the lncRNAs *Airn* and *Kcnq1ot1*](https://doi.org/10.1371/journal.pgen.1012215)
-Murvin MM, Li S, Abrash EW, Peck BA, Boyson SP, et al. (2026) PLOS Genetics 22(6): e1012215. [https://doi.org/10.1371/journal.pgen.1012215](https://doi.org/10.1371/journal.pgen.1012215)
+Correlated protein-RNA associations and a requirement for HNRNPU in the long-range recruitment of Polycomb Repressive Complexes by the lncRNAs Airn and Kcnq1ot1
+Murvin MM, Li S, Abrash EW, Peck BA, Boyson SP, et al. (2026) PLOS Genetics 22(6): e1012215. https://doi.org/10.1371/journal.pgen.1012215
 ```
